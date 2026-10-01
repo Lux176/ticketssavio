@@ -70,8 +70,11 @@ def vista_solicitante():
                 salon = c4.text_input("Salón o Área (Ej. 6B, Laboratorio)")
                 
                 problema = st.text_area("Describe la falla (Ej. El proyector no enciende, no hay internet)")
+                
+                # --- ACTUALIZACIÓN: Tres niveles de urgencia ---
                 impacto = st.radio("Nivel de Urgencia", [
                     "Bajo - Puede revisarse en el transcurso del día", 
+                    "Medio - Interfiere parcialmente con las actividades",
                     "Alto - Afecta una clase en curso (Urgente)"
                 ])
                 
@@ -114,6 +117,36 @@ def vista_solicitante():
             )
         else:
             st.info("No hay solicitudes recientes registradas.")
+
+    # --- PESTAÑA 2: Fila de Espera Global ---
+    with tab2:
+        st.subheader("Fila de Espera Actual")
+        st.write("Consulta los reportes que están pendientes de atención por el equipo de Sistemas.")
+        
+        df_cola = pd.read_sql_query(
+            "SELECT id, fecha, seccion, salon, impacto, estado FROM solicitudes WHERE estado = 'Pendiente' ORDER BY id ASC", 
+            conn
+        )
+        
+        if not df_cola.empty:
+            df_cola.insert(0, 'Turno en Fila', range(1, 1 + len(df_cola)))
+            
+            df_mis_pendientes = pd.read_sql_query(
+                "SELECT id FROM solicitudes WHERE solicitante = ? AND estado = 'Pendiente'", 
+                conn, params=(st.session_state['usuario'],)
+            )
+            
+            if not df_mis_pendientes.empty:
+                mis_ids = df_mis_pendientes['id'].tolist()
+                posiciones = df_cola[df_cola['id'].isin(mis_ids)]['Turno en Fila'].tolist()
+                pos_str = ", ".join(map(str, posiciones))
+                st.info(f"📍 **Tus reportes activos se encuentran en las posiciones: {pos_str} de la fila.**")
+            
+            df_mostrar = df_cola[['Turno en Fila', 'fecha', 'seccion', 'salon', 'impacto', 'estado']]
+            st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
+            
+        else:
+            st.success("¡Excelente! No hay fila de espera en este momento. El equipo de sistemas está libre.")
 
     # --- PESTAÑA 2: Fila de Espera Global ---
     with tab2:
