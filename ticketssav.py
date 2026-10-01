@@ -5,7 +5,7 @@ from datetime import datetime
 from io import BytesIO
 
 # Configuración de página
-st.set_page_config(page_title="Gestión de Riesgos", page_icon="🚨", layout="wide")
+st.set_page_config(page_title="Soporte Domingo Savio", page_icon="🚨", layout="wide")
 
 # Conexión a Base de Datos
 @st.cache_resource
