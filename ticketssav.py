@@ -31,10 +31,10 @@ def login():
             usuario = st.text_input("Usuario")
             password = st.text_input("Contraseña", type="password")
             if st.form_submit_button("Entrar", use_container_width=True):
-                if usuario == "admin" and password == "admin123":
+                if usuario == "admin" and password == "savio2026":
                     st.session_state.update({'usuario': usuario, 'rol': 'admin'})
                     st.rerun()
-                elif usuario == "operador" and password == "operador123":
+                elif usuario == "soporte" and password == "soporte":
                     st.session_state.update({'usuario': usuario, 'rol': 'operador'})
                     st.rerun()
                 else:
