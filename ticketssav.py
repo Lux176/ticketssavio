@@ -32,7 +32,6 @@ if 'usuario' not in st.session_state: st.session_state.update({'usuario': None, 
 
 def login():
     # --- CONFIGURACIÓN DE IMAGEN DE FONDO GLOBAL ---
-    # Reemplaza la URL entre comillas simples con tu link de imagen o GIF
     url_fondo = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJkZTZ4OTBwaWRkam85azNudGRmb3h2MzJjenBnd2Z1YW9paGtpcCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ec5iuhc2aM9o3uK64q/giphy.gif' 
     
     st.markdown(f"""
@@ -43,26 +42,38 @@ def login():
             background-position: center;
             background-attachment: fixed;
         }}
-        /* Hace semi-transparente el recuadro del formulario para que el fondo resalte */
+        /* Hace el recuadro del formulario totalmente blanco, sólido y con sombra flotante */
         [data-testid="stForm"] {{
-            background-color: rgba(255, 255, 255, 0.85); 
+            background-color: #ffffff !important; 
             border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0px 10px 25px rgba(0,0,0,0.6);
+            border: 1px solid #d1d5db;
+        }}
+        /* Fuerza a que las letras de 'Usuario' y 'Contraseña' sean negras y negritas */
+        [data-testid="stForm"] label, [data-testid="stForm"] p {{
+            color: #000000 !important;
+            font-weight: 700 !important;
+            font-size: 16px !important;
         }}
         </style>
         """, unsafe_allow_html=True)
 
     # --- CONFIGURACIÓN DEL LOGO/GIF EN EL INICIO DE SESIÓN ---
-    # Reemplaza este link por tu GIF de Giphy (Usa el "GIF Link" directo que termina en .gif)
     url_gif = ''
     
-    st.markdown("<h1 style='text-align: center; color: #1f2937;'>🏫 Sistema de Soporte</h1>", unsafe_allow_html=True)
+    # Título con contorno y sombra gruesa para que contraste sobre cualquier imagen
+    st.markdown(
+        "<h1 style='text-align: center; color: #ffffff; text-shadow: 3px 3px 6px #000000, -1px -1px 4px #000000, 0px 0px 10px rgba(0,0,0,0.8); margin-bottom: 30px;'>"
+        "🏫 Sistema de Soporte</h1>", 
+        unsafe_allow_html=True
+    )
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # El CSS maxWidth: 100% asegura que el GIF nunca se salga del contenedor de la columna
         st.markdown(
-            f'<div style="display: flex; justify-content: center; margin-bottom: 20px;">'
-            f'<img src="{url_gif}" style="max-width: 100%; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);">'
+            f'<div style="display: flex; justify-content: center; margin-bottom: 25px;">'
+            f'<img src="{url_gif}" style="max-width: 100%; border-radius: 10px; box-shadow: 0px 6px 15px rgba(0,0,0,0.5);">'
             f'</div>', 
             unsafe_allow_html=True
         )
@@ -71,11 +82,11 @@ def login():
             usuario = st.text_input("Usuario")
             password = st.text_input("Contraseña", type="password")
             
-            if st.form_submit_button("Entrar", use_container_width=True):
+            # Se agregó type="primary" al botón para que tenga color sólido
+            if st.form_submit_button("Entrar", type="primary", use_container_width=True):
                 user_clean = usuario.strip().lower()
                 pass_clean = password.strip()
                 
-                # Validación segura leyendo las contraseñas ocultas en secrets.toml
                 if user_clean == "admin" and pass_clean == st.secrets["pass_admin"]:
                     st.session_state.update({'usuario': user_clean, 'rol': 'admin'})
                     st.rerun()
