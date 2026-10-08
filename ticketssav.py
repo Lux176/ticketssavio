@@ -53,7 +53,7 @@ def login():
 
     # --- CONFIGURACIÓN DEL LOGO/GIF EN EL INICIO DE SESIÓN ---
     # Reemplaza este link por tu GIF de Giphy (Usa el "GIF Link" directo que termina en .gif)
-    url_gif = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3OTgwZzl2MzJ3ejY5NmgzbTJoajF4ejh1cmcyMHNkM2Q1dm02eWd4eSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/loLjad4noNNNGUe0f1/giphy.gif'
+    url_gif = 'ticketssav.py'
     
     st.markdown("<h1 style='text-align: center; color: #1f2937;'>🏫 Sistema de Soporte</h1>", unsafe_allow_html=True)
     
