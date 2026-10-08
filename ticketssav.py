@@ -53,7 +53,7 @@ def login():
 
     # --- CONFIGURACIÓN DEL LOGO/GIF EN EL INICIO DE SESIÓN ---
     # Reemplaza este link por tu GIF de Giphy (Usa el "GIF Link" directo que termina en .gif)
-    url_gif = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cWlwN2wyang2MXcyMTBsMXlwb3U1cmswOHF6Z2xoYTFzNmZpdXN4dyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/9vJCmAR3mfKdJCeNHM/giphy.gif'
+    url_gif = ''
     
     st.markdown("<h1 style='text-align: center; color: #1f2937;'>🏫 Sistema de Soporte</h1>", unsafe_allow_html=True)
     
