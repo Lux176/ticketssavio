@@ -99,10 +99,8 @@ def login():
 def vista_solicitante():
     st.title("🙋‍♂️ Centro de Apoyo Técnico")
     
-    # Dividimos la vista en dos pestañas
     tab1, tab2 = st.tabs(["📝 Levantar Reporte y Mis Tickets", "👀 Fila de Espera Global"])
     
-    # --- PESTAÑA 1: Formulario y tickets propios ---
     with tab1:
         st.write("Completa los datos para reportar la falla. El equipo de sistemas acudirá a revisar.")
         
@@ -119,8 +117,6 @@ def vista_solicitante():
                 salon = c4.text_input("Salón o Área (Ej. 6B, Laboratorio)")
                 
                 problema = st.text_area("Describe la falla (Ej. El proyector no enciende, no hay internet)")
-                
-                # --- ACTUALIZACIÓN: Tres niveles de urgencia ---
                 impacto = st.radio("Nivel de Urgencia", [
                     "Bajo - Puede revisarse en el transcurso del día", 
                     "Medio - Interfiere parcialmente con las actividades",
@@ -153,10 +149,9 @@ def vista_solicitante():
         
         if not df_mis_solicitudes.empty:
             def colorear_estado(val):
-                if val == 'Pendiente':
-                    return 'background-color: #ffcccc; color: #900000; font-weight: bold;'
-                elif val == 'Atendida':
-                    return 'background-color: #ccffcc; color: #006600; font-weight: bold;'
+                if val == 'Pendiente': return 'background-color: #ffcccc; color: #900000; font-weight: bold;'
+                elif val == 'En proceso': return 'background-color: #fff3cd; color: #856404; font-weight: bold;'
+                elif val == 'Atendida': return 'background-color: #ccffcc; color: #006600; font-weight: bold;'
                 return ''
                 
             st.dataframe(
@@ -167,13 +162,12 @@ def vista_solicitante():
         else:
             st.info("No hay solicitudes recientes registradas.")
 
-    # --- PESTAÑA 2: Fila de Espera Global ---
     with tab2:
         st.subheader("Fila de Espera Actual")
         st.write("Consulta los reportes que están pendientes de atención por el equipo de Sistemas.")
         
         df_cola = pd.read_sql_query(
-            "SELECT id, fecha, seccion, salon, impacto, estado FROM solicitudes WHERE estado = 'Pendiente' ORDER BY id ASC", 
+            "SELECT id, fecha, seccion, salon, impacto, estado FROM solicitudes WHERE estado IN ('Pendiente', 'En proceso') ORDER BY id ASC", 
             conn
         )
         
@@ -181,7 +175,7 @@ def vista_solicitante():
             df_cola.insert(0, 'Turno en Fila', range(1, 1 + len(df_cola)))
             
             df_mis_pendientes = pd.read_sql_query(
-                "SELECT id FROM solicitudes WHERE solicitante = ? AND estado = 'Pendiente'", 
+                "SELECT id FROM solicitudes WHERE solicitante = ? AND estado IN ('Pendiente', 'En proceso')", 
                 conn, params=(st.session_state['usuario'],)
             )
             
@@ -192,43 +186,17 @@ def vista_solicitante():
                 st.info(f"📍 **Tus reportes activos se encuentran en las posiciones: {pos_str} de la fila.**")
             
             df_mostrar = df_cola[['Turno en Fila', 'fecha', 'seccion', 'salon', 'impacto', 'estado']]
-            st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
             
-        else:
-            st.success("¡Excelente! No hay fila de espera en este momento. El equipo de sistemas está libre.")
-
-    # --- PESTAÑA 2: Fila de Espera Global ---
-    with tab2:
-        st.subheader("Fila de Espera Actual")
-        st.write("Consulta los reportes que están pendientes de atención por el equipo de Sistemas.")
-        
-        # Consultamos todos los tickets pendientes ordenados por ID (el más antiguo primero)
-        df_cola = pd.read_sql_query(
-            "SELECT id, fecha, seccion, salon, impacto, estado FROM solicitudes WHERE estado = 'Pendiente' ORDER BY id ASC", 
-            conn
-        )
-        
-        if not df_cola.empty:
-            # Agregamos una columna que representa el turno/posición en la fila (1, 2, 3...)
-            df_cola.insert(0, 'Turno en Fila', range(1, 1 + len(df_cola)))
-            
-            # Verificamos si el usuario actual tiene tickets en esta fila
-            df_mis_pendientes = pd.read_sql_query(
-                "SELECT id FROM solicitudes WHERE solicitante = ? AND estado = 'Pendiente'", 
-                conn, params=(st.session_state['usuario'],)
+            def colorear_estado_cola(val):
+                if val == 'Pendiente': return 'background-color: #ffcccc; color: #900000; font-weight: bold;'
+                elif val == 'En proceso': return 'background-color: #fff3cd; color: #856404; font-weight: bold;'
+                return ''
+                
+            st.dataframe(
+                df_mostrar.style.map(colorear_estado_cola, subset=['estado']), 
+                use_container_width=True, 
+                hide_index=True
             )
-            
-            if not df_mis_pendientes.empty:
-                mis_ids = df_mis_pendientes['id'].tolist()
-                # Extraemos qué turnos le corresponden al usuario actual
-                posiciones = df_cola[df_cola['id'].isin(mis_ids)]['Turno en Fila'].tolist()
-                pos_str = ", ".join(map(str, posiciones))
-                st.info(f"📍 **Tus reportes activos se encuentran en las posiciones: {pos_str} de la fila.**")
-            
-            # Mostramos la tabla pública ocultando el ID real de la base de datos para no confundir
-            df_mostrar = df_cola[['Turno en Fila', 'fecha', 'seccion', 'salon', 'impacto', 'estado']]
-            st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
-            
         else:
             st.success("¡Excelente! No hay fila de espera en este momento. El equipo de sistemas está libre.")
     
@@ -264,10 +232,11 @@ def vista_admin():
         df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
         
         if not df_sol.empty:
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             c1.metric("Total", len(df_sol))
             c2.metric("🔴 Pendientes", len(df_sol[df_sol['estado'] == 'Pendiente']))
-            c3.metric("🟢 Atendidas", len(df_sol[df_sol['estado'] == 'Atendida']))
+            c3.metric("🟡 En proceso", len(df_sol[df_sol['estado'] == 'En proceso']))
+            c4.metric("🟢 Atendidas", len(df_sol[df_sol['estado'] == 'Atendida']))
             
             st.markdown("---")
             with st.expander("📈 Ver Gráficas Detalladas", expanded=True):
@@ -286,11 +255,10 @@ def vista_admin():
         df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
         
         if not df_sol.empty:
-            # Menú desplegable para filtros y descarga
             with st.expander("🔍 Filtros de Búsqueda y Descarga", expanded=False):
                 col1, col2, col3 = st.columns([2, 2, 1])
                 with col1:
-                    filtro_estado = st.multiselect("Estado", df_sol['estado'].unique(), default=["Atendida"] if "Atendida" in df_sol['estado'].values else df_sol['estado'].unique())
+                    filtro_estado = st.multiselect("Estado", df_sol['estado'].unique(), default=df_sol['estado'].unique())
                 with col2:
                     df_sol['fecha_dt'] = pd.to_datetime(df_sol['fecha']).dt.date
                     fecha_reporte = st.date_input("Fecha de Reporte", value=datetime.now().date())
@@ -307,26 +275,27 @@ def vista_admin():
                             df_excel.to_excel(writer, index=False, sheet_name='Reporte Diario')
                         st.download_button("📥 Excel", data=output.getvalue(), file_name=f"reporte_{fecha_reporte}.xlsx", type="primary", use_container_width=True)
 
-            # Menú desplegable para cerrar tickets
-            pendientes = df_filtrado[df_filtrado['estado'] == 'Pendiente']['id'].tolist() if not df_filtrado.empty else []
-            if pendientes:
-                with st.expander("✅ Atender / Cerrar Reporte", expanded=True):
-                    with st.form("cerrar_solicitud"):
-                        col_a, col_b = st.columns([3, 1])
+            activas = df_filtrado[df_filtrado['estado'].isin(['Pendiente', 'En proceso'])]['id'].tolist() if not df_filtrado.empty else []
+            if activas:
+                with st.expander("🔄 Actualizar Estado de Reporte", expanded=True):
+                    with st.form("actualizar_solicitud"):
+                        col_a, col_b, col_c = st.columns([2, 2, 1])
                         with col_a:
-                            sid = st.selectbox("ID del reporte a cerrar:", pendientes, index=None)
+                            sid = st.selectbox("ID del reporte:", activas, index=None)
                         with col_b:
+                            nuevo_estado = st.selectbox("Cambiar a:", ["En proceso", "Atendida"])
+                        with col_c:
                             st.write("") 
                             st.write("")
-                            if st.form_submit_button("Marcar Atendido", type="primary", use_container_width=True) and sid:
-                                c.execute("UPDATE solicitudes SET estado = 'Atendida' WHERE id = ?", (sid,))
+                            if st.form_submit_button("Actualizar", type="primary", use_container_width=True) and sid:
+                                c.execute("UPDATE solicitudes SET estado = ? WHERE id = ?", (nuevo_estado, sid))
                                 conn.commit()
                                 st.rerun()
 
-            # Visualización de la tabla
             if not df_filtrado.empty:
                 def colorear_estado(val):
                     if val == 'Pendiente': return 'background-color: #ffcccc; color: #900000; font-weight: bold;'
+                    elif val == 'En proceso': return 'background-color: #fff3cd; color: #856404; font-weight: bold;'
                     elif val == 'Atendida': return 'background-color: #ccffcc; color: #006600; font-weight: bold;'
                     return ''
                 st.dataframe(df_filtrado.drop(columns=['fecha_dt']).style.map(colorear_estado, subset=['estado']), use_container_width=True, hide_index=True)
@@ -369,7 +338,6 @@ def vista_admin():
             if st.form_submit_button("✅ Registrar Inspección", type="primary"):
                 if salon:
                     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    # Se extrae solo el número de la prioridad
                     prioridad_num = prioridad.split(" ")[0] 
                     c.execute("""INSERT INTO inspecciones 
                                  (fecha, tecnico, salon, seccion, eq_proyector, eq_cable, eq_hdmi, eq_pared_hdmi, 
@@ -391,7 +359,6 @@ def vista_admin():
         if not df_insp.empty:
             df_insp['fecha_dt'] = pd.to_datetime(df_insp['fecha']).dt.date
             
-            # Menú desplegable para filtrado y exportación de historiales
             with st.expander("📅 Filtrar y Exportar Historial", expanded=True):
                 col1, col2 = st.columns([2, 1])
                 with col1:
