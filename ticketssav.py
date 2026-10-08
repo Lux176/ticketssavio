@@ -31,21 +31,59 @@ c = conn.cursor()
 if 'usuario' not in st.session_state: st.session_state.update({'usuario': None, 'rol': None})
 
 def login():
-    st.markdown("<h2 style='text-align: center;'>🏫 Acceso al Sistema de Soporte</h2>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
+    # --- CONFIGURACIÓN DE IMAGEN DE FONDO GLOBAL ---
+    # Reemplaza la URL entre comillas simples con tu link de imagen o GIF
+    url_fondo = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNGs0NTNpMWVhdGs5YTA5cnA0YWt5NWVvNWc3Zzg0b2kybmxqYXBjMyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/U3qYN8S0j3bpK/giphy.gif' 
+    
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            background-image: url('{url_fondo}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        /* Hace semi-transparente el recuadro del formulario para que el fondo resalte */
+        [data-testid="stForm"] {{
+            background-color: rgba(255, 255, 255, 0.85); 
+            border-radius: 15px;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
+    # --- CONFIGURACIÓN DEL LOGO/GIF EN EL INICIO DE SESIÓN ---
+    # Reemplaza este link por tu GIF de Giphy (Usa el "GIF Link" directo que termina en .gif)
+    url_gif = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3OTgwZzl2MzJ3ejY5NmgzbTJoajF4ejh1cmcyMHNkM2Q1dm02eWd4eSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/loLjad4noNNNGUe0f1/giphy.gif'
+    
+    st.markdown("<h1 style='text-align: center; color: #1f2937;'>🏫 Sistema de Soporte</h1>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        # El CSS maxWidth: 100% asegura que el GIF nunca se salga del contenedor de la columna
+        st.markdown(
+            f'<div style="display: flex; justify-content: center; margin-bottom: 20px;">'
+            f'<img src="{url_gif}" style="max-width: 100%; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);">'
+            f'</div>', 
+            unsafe_allow_html=True
+        )
+        
         with st.form("login_form"):
             usuario = st.text_input("Usuario")
             password = st.text_input("Contraseña", type="password")
+            
             if st.form_submit_button("Entrar", use_container_width=True):
-                if usuario == "admin" and password == "savio2026":
-                    st.session_state.update({'usuario': usuario, 'rol': 'admin'})
+                user_clean = usuario.strip().lower()
+                pass_clean = password.strip()
+                
+                # Validación segura leyendo las contraseñas ocultas en secrets.toml
+                if user_clean == "admin" and pass_clean == st.secrets["pass_admin"]:
+                    st.session_state.update({'usuario': user_clean, 'rol': 'admin'})
                     st.rerun()
-                elif usuario == "docente" and password == "docente123":
-                    st.session_state.update({'usuario': usuario, 'rol': 'solicitante'})
+                elif user_clean == "docente" and pass_clean == st.secrets["pass_docente"]:
+                    st.session_state.update({'usuario': user_clean, 'rol': 'solicitante'})
                     st.rerun()
                 else:
-                    st.error("Credenciales inválidas")
+                    st.error("Credenciales inválidas. Verifica mayúsculas y espacios.")
 
 def vista_solicitante():
     st.title("🙋‍♂️ Centro de Apoyo Técnico")
@@ -216,95 +254,87 @@ def vista_admin():
         
         if not df_sol.empty:
             c1, c2, c3 = st.columns(3)
-            c1.metric("Total de Solicitudes", len(df_sol))
+            c1.metric("Total", len(df_sol))
             c2.metric("🔴 Pendientes", len(df_sol[df_sol['estado'] == 'Pendiente']))
             c3.metric("🟢 Atendidas", len(df_sol[df_sol['estado'] == 'Atendida']))
             
             st.markdown("---")
-            col_chart1, col_chart2 = st.columns(2)
-            
-            with col_chart1:
-                st.write("**Solicitudes por Sección (Edificios)**")
-                conteo_seccion = df_sol['seccion'].value_counts()
-                st.bar_chart(conteo_seccion)
-                
-            with col_chart2:
-                st.write("**Nivel de Urgencia de los Reportes**")
-                conteo_urgencia = df_sol['impacto'].value_counts()
-                st.bar_chart(conteo_urgencia)
+            with st.expander("📈 Ver Gráficas Detalladas", expanded=True):
+                col_chart1, col_chart2 = st.columns(2)
+                with col_chart1:
+                    st.write("**Reportes por Sección**")
+                    st.bar_chart(df_sol['seccion'].value_counts())
+                with col_chart2:
+                    st.write("**Niveles de Urgencia**")
+                    st.bar_chart(df_sol['impacto'].value_counts())
         else:
-            st.info("No hay datos suficientes para mostrar métricas.")
+            st.info("Sin datos para mostrar métricas.")
 
     elif menu == "Bandeja de Solicitudes":
         st.subheader("Bandeja de Solicitudes (Docentes)")
         df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
         
         if not df_sol.empty:
-            # Filtros para el reporte diario
-            col1, col2 = st.columns(2)
-            with col1:
-                filtro_estado = st.multiselect(
-                    "Filtrar por Estado", 
-                    options=df_sol['estado'].unique(), 
-                    default=["Atendida"] if "Atendida" in df_sol['estado'].values else df_sol['estado'].unique()
-                )
-            with col2:
-                df_sol['fecha_dt'] = pd.to_datetime(df_sol['fecha']).dt.date
-                fecha_reporte = st.date_input("Filtrar por Fecha (Reporte Diario)", value=datetime.now().date())
-            
-            # Aplicar filtros de búsqueda
-            df_filtrado = df_sol[(df_sol['estado'].isin(filtro_estado)) & (df_sol['fecha_dt'] == fecha_reporte)]
-            
-            # Gestión para cerrar tickets pendientes
-            pendientes = df_filtrado[df_filtrado['estado'] == 'Pendiente']['id'].tolist()
+            # Menú desplegable para filtros y descarga
+            with st.expander("🔍 Filtros de Búsqueda y Descarga", expanded=False):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                with col1:
+                    filtro_estado = st.multiselect("Estado", df_sol['estado'].unique(), default=["Atendida"] if "Atendida" in df_sol['estado'].values else df_sol['estado'].unique())
+                with col2:
+                    df_sol['fecha_dt'] = pd.to_datetime(df_sol['fecha']).dt.date
+                    fecha_reporte = st.date_input("Fecha de Reporte", value=datetime.now().date())
+                
+                df_filtrado = df_sol[(df_sol['estado'].isin(filtro_estado)) & (df_sol['fecha_dt'] == fecha_reporte)]
+                
+                with col3:
+                    st.write("") 
+                    st.write("")
+                    if not df_filtrado.empty:
+                        output = BytesIO()
+                        df_excel = df_filtrado.drop(columns=['fecha_dt'])
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df_excel.to_excel(writer, index=False, sheet_name='Reporte Diario')
+                        st.download_button("📥 Excel", data=output.getvalue(), file_name=f"reporte_{fecha_reporte}.xlsx", type="primary", use_container_width=True)
+
+            # Menú desplegable para cerrar tickets
+            pendientes = df_filtrado[df_filtrado['estado'] == 'Pendiente']['id'].tolist() if not df_filtrado.empty else []
             if pendientes:
-                with st.form("cerrar_solicitud"):
-                    sid = st.selectbox("Selecciona ID de solicitud para marcar como Atendida", pendientes, index=None)
-                    if st.form_submit_button("Marcar como Atendida") and sid:
-                        c.execute("UPDATE solicitudes SET estado = 'Atendida' WHERE id = ?", (sid,))
-                        conn.commit()
-                        st.rerun()
-            
-            # Descarga del reporte en Excel
+                with st.expander("✅ Atender / Cerrar Reporte", expanded=True):
+                    with st.form("cerrar_solicitud"):
+                        col_a, col_b = st.columns([3, 1])
+                        with col_a:
+                            sid = st.selectbox("ID del reporte a cerrar:", pendientes, index=None)
+                        with col_b:
+                            st.write("") 
+                            st.write("")
+                            if st.form_submit_button("Marcar Atendido", type="primary", use_container_width=True) and sid:
+                                c.execute("UPDATE solicitudes SET estado = 'Atendida' WHERE id = ?", (sid,))
+                                conn.commit()
+                                st.rerun()
+
+            # Visualización de la tabla
             if not df_filtrado.empty:
-                output = BytesIO()
-                df_excel = df_filtrado.drop(columns=['fecha_dt']) # Eliminamos la columna temporal
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df_excel.to_excel(writer, index=False, sheet_name='Reporte Diario')
-                
-                st.download_button(
-                    label=f"📥 Descargar Reporte Excel ({fecha_reporte})", 
-                    data=output.getvalue(), 
-                    file_name=f"reporte_tickets_{fecha_reporte}.xlsx",
-                    mime="application/vnd.ms-excel"
-                )
-            
-            def colorear_estado(val):
-                if val == 'Pendiente':
-                    return 'background-color: #ffcccc; color: #900000; font-weight: bold;'
-                elif val == 'Atendida':
-                    return 'background-color: #ccffcc; color: #006600; font-weight: bold;'
-                return ''
-                
-            # Mostrar la tabla en pantalla
-            st.dataframe(
-                df_filtrado.drop(columns=['fecha_dt']).style.map(colorear_estado, subset=['estado']), 
-                use_container_width=True, 
-                hide_index=True
-            )
+                def colorear_estado(val):
+                    if val == 'Pendiente': return 'background-color: #ffcccc; color: #900000; font-weight: bold;'
+                    elif val == 'Atendida': return 'background-color: #ccffcc; color: #006600; font-weight: bold;'
+                    return ''
+                st.dataframe(df_filtrado.drop(columns=['fecha_dt']).style.map(colorear_estado, subset=['estado']), use_container_width=True, hide_index=True)
+            else:
+                st.info("No hay coincidencias con los filtros aplicados.")
         else:
-            st.info("No hay solicitudes registradas en la base de datos.")
+            st.info("No hay solicitudes registradas.")
 
     elif menu == "Realizar Inspección Técnica":
         st.subheader("Formulario de Inspección Física")
         opciones_estado = ["Funciona Correctamente", "Presenta fallas o requiere reparación", "Requiere cambio de equipo", "Faltante"]
         
         with st.form("nuevo_reporte", clear_on_submit=True):
+            st.write("### 📍 1. Ubicación")
             c1, c2 = st.columns(2)
             salon = c1.text_input("Número o nombre del salón")
             seccion = c2.selectbox("Sección o edificio", ["Preescolar", "Primaria", "Secundaria", "Preparatoria", "Áreas Comunes", "Dirección"])
             
-            st.markdown("---")
+            st.write("### 💻 2. Revisión de Equipos")
             col_a, col_b = st.columns(2)
             with col_a:
                 eq_proyector = st.selectbox("Proyector", opciones_estado)
@@ -316,18 +346,20 @@ def vista_admin():
                 eq_pared_hdmi = st.selectbox("Pared HDMI", opciones_estado)
                 eq_pc = st.selectbox("PC/Laptop", opciones_estado)
                 
-            st.markdown("---")
-            req_reparacion = st.radio("¿Requiere reparación o cambio?", ["No", "Si"])
+            st.write("### 🛠️ 3. Acciones de Mantenimiento")
+            req_reparacion = st.radio("¿Requiere reparación o cambio?", ["No", "Si"], horizontal=True)
             detalle_falla = st.text_area("Especificar falla (si aplica)")
             
             c_inv, c_baja, c_prio = st.columns(3)
             num_inventario = c_inv.text_input("Núm. Inventario")
-            baja_inventario = c_baja.radio("¿Baja del inventario?", ["No", "Si"])
-            prioridad = c_prio.selectbox("Prioridad", ["1", "2", "3"])
+            baja_inventario = c_baja.radio("¿Baja del inventario?", ["No", "Si"], horizontal=True)
+            prioridad = c_prio.selectbox("Prioridad", ["1 (Baja)", "2 (Media)", "3 (Alta)"])
             
-            if st.form_submit_button("Registrar Inspección", type="primary"):
+            if st.form_submit_button("✅ Registrar Inspección", type="primary"):
                 if salon:
                     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    # Se extrae solo el número de la prioridad
+                    prioridad_num = prioridad.split(" ")[0] 
                     c.execute("""INSERT INTO inspecciones 
                                  (fecha, tecnico, salon, seccion, eq_proyector, eq_cable, eq_hdmi, eq_pared_hdmi, 
                                   eq_ethernet, eq_pc, eq_impresora, req_reparacion, detalle_falla, num_inventario, 
@@ -335,42 +367,38 @@ def vista_admin():
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
                               (fecha, st.session_state['usuario'], salon, seccion, eq_proyector, eq_cable, eq_hdmi, 
                                eq_pared_hdmi, eq_ethernet, eq_pc, eq_impresora, req_reparacion, detalle_falla, 
-                               num_inventario, baja_inventario, prioridad, 'En revisión'))
+                               num_inventario, baja_inventario, prioridad_num, 'En revisión'))
                     conn.commit()
-                    st.success("Inspección guardada.")
+                    st.success("Inspección guardada exitosamente.")
                 else:
-                    st.error("El salón es obligatorio.")
+                    st.error("El nombre del salón es obligatorio.")
 
     elif menu == "Base de Datos de Inspecciones":
-        st.subheader("Historial Técnico y Exportación")
+        st.subheader("Historial Técnico")
         df_insp = pd.read_sql_query("SELECT * FROM inspecciones", conn)
         
         if not df_insp.empty:
-            # Convertimos la fecha de texto a un formato de fecha real para poder filtrar
             df_insp['fecha_dt'] = pd.to_datetime(df_insp['fecha']).dt.date
             
-            # Selector de rango de fechas
-            rango_fechas = st.date_input(
-                "Filtrar por rango de fechas", 
-                value=(df_insp['fecha_dt'].min(), df_insp['fecha_dt'].max())
-            )
-            
-            # Validamos que el usuario haya seleccionado inicio y fin
-            if len(rango_fechas) == 2:
-                df_filtrado = df_insp[(df_insp['fecha_dt'] >= rango_fechas[0]) & (df_insp['fecha_dt'] <= rango_fechas[1])]
-                df_mostrar = df_filtrado.drop(columns=['fecha_dt']) # Ocultamos la columna temporal
-            else:
-                df_mostrar = df_insp.drop(columns=['fecha_dt'])
+            # Menú desplegable para filtrado y exportación de historiales
+            with st.expander("📅 Filtrar y Exportar Historial", expanded=True):
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    rango_fechas = st.date_input("Filtrar por rango de fechas", value=(df_insp['fecha_dt'].min(), df_insp['fecha_dt'].max()))
+                
+                if len(rango_fechas) == 2:
+                    df_filtrado = df_insp[(df_insp['fecha_dt'] >= rango_fechas[0]) & (df_insp['fecha_dt'] <= rango_fechas[1])]
+                    df_mostrar = df_filtrado.drop(columns=['fecha_dt'])
+                else:
+                    df_mostrar = df_insp.drop(columns=['fecha_dt'])
 
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_mostrar.to_excel(writer, index=False, sheet_name='Inspecciones')
-            
-            st.download_button(
-                "📥 Descargar Reporte Excel", 
-                data=output.getvalue(), 
-                file_name="inspecciones_salones.xlsx"
-            )
+                with col2:
+                    st.write("")
+                    st.write("")
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_mostrar.to_excel(writer, index=False, sheet_name='Inspecciones')
+                    st.download_button("📥 Descargar Reporte Excel", data=output.getvalue(), file_name="inspecciones.xlsx", type="primary", use_container_width=True)
             
             st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
         else:
