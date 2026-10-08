@@ -212,55 +212,49 @@ def vista_admin():
     ])
     
     # --- MEJORA: Dashboard Analítico ---
-    if menu == "Dashboard Analítico":
-        st.subheader("📊 Métricas de Soporte")
-        df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
-        
-        if not df_sol.empty:
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Total de Solicitudes", len(df_sol))
-            c2.metric("🔴 Pendientes", len(df_sol[df_sol['estado'] == 'Pendiente']))
-            c3.metric("🟢 Atendidas", len(df_sol[df_sol['estado'] == 'Atendida']))
-            
-            st.markdown("---")
-            col_chart1, col_chart2 = st.columns(2)
-            
-            with col_chart1:
-                st.write("**Solicitudes por Sección (Edificios)**")
-                # Contamos cuántas solicitudes hay por sección y las graficamos
-                conteo_seccion = df_sol['seccion'].value_counts()
-                st.bar_chart(conteo_seccion)
-                
-            with col_chart2:
-                st.write("**Nivel de Urgencia de los Reportes**")
-                conteo_urgencia = df_sol['impacto'].value_counts()
-                st.bar_chart(conteo_urgencia)
-        else:
-            st.info("No hay datos suficientes para mostrar métricas.")
-
-    # --- MEJORA: Filtros interactivos en Bandeja de Solicitudes ---
     elif menu == "Bandeja de Solicitudes":
         st.subheader("Bandeja de Solicitudes (Docentes)")
         df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
         
         if not df_sol.empty:
-            # Filtro múltiple por Estado
-            filtro_estado = st.multiselect(
-                "Filtrar por Estado", 
-                options=df_sol['estado'].unique(), 
-                default=df_sol['estado'].unique()
-            )
+            # Filtros para el reporte diario
+            col1, col2 = st.columns(2)
+            with col1:
+                filtro_estado = st.multiselect(
+                    "Filtrar por Estado", 
+                    options=df_sol['estado'].unique(), 
+                    default=["Atendida"] if "Atendida" in df_sol['estado'].values else df_sol['estado'].unique()
+                )
+            with col2:
+                df_sol['fecha_dt'] = pd.to_datetime(df_sol['fecha']).dt.date
+                fecha_reporte = st.date_input("Filtrar por Fecha (Reporte Diario)", value=datetime.now().date())
             
-            # Aplicamos el filtro al DataFrame
-            df_filtrado = df_sol[df_sol['estado'].isin(filtro_estado)]
+            # Aplicar filtros de búsqueda
+            df_filtrado = df_sol[(df_sol['estado'].isin(filtro_estado)) & (df_sol['fecha_dt'] == fecha_reporte)]
             
+            # Gestión para cerrar tickets pendientes
             pendientes = df_filtrado[df_filtrado['estado'] == 'Pendiente']['id'].tolist()
-            with st.form("cerrar_solicitud"):
-                sid = st.selectbox("Selecciona ID de solicitud para marcar como Atendida", pendientes, index=None)
-                if st.form_submit_button("Marcar como Atendida") and sid:
-                    c.execute("UPDATE solicitudes SET estado = 'Atendida' WHERE id = ?", (sid,))
-                    conn.commit()
-                    st.rerun()
+            if pendientes:
+                with st.form("cerrar_solicitud"):
+                    sid = st.selectbox("Selecciona ID de solicitud para marcar como Atendida", pendientes, index=None)
+                    if st.form_submit_button("Marcar como Atendida") and sid:
+                        c.execute("UPDATE solicitudes SET estado = 'Atendida' WHERE id = ?", (sid,))
+                        conn.commit()
+                        st.rerun()
+            
+            # Descarga del reporte en Excel
+            if not df_filtrado.empty:
+                output = BytesIO()
+                df_excel = df_filtrado.drop(columns=['fecha_dt']) # Eliminamos la columna temporal
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df_excel.to_excel(writer, index=False, sheet_name='Reporte Diario')
+                
+                st.download_button(
+                    label=f"📥 Descargar Reporte Excel ({fecha_reporte})", 
+                    data=output.getvalue(), 
+                    file_name=f"reporte_tickets_{fecha_reporte}.xlsx",
+                    mime="application/vnd.ms-excel"
+                )
             
             def colorear_estado(val):
                 if val == 'Pendiente':
@@ -269,13 +263,14 @@ def vista_admin():
                     return 'background-color: #ccffcc; color: #006600; font-weight: bold;'
                 return ''
                 
+            # Mostrar la tabla en pantalla
             st.dataframe(
-                df_filtrado.style.map(colorear_estado, subset=['estado']), 
+                df_filtrado.drop(columns=['fecha_dt']).style.map(colorear_estado, subset=['estado']), 
                 use_container_width=True, 
                 hide_index=True
             )
         else:
-            st.info("No hay solicitudes pendientes.")
+            st.info("No hay solicitudes registradas en la base de datos.")
             
     elif menu == "Realizar Inspección Técnica":
         st.subheader("Formulario de Inspección Física")
