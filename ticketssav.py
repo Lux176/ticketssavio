@@ -33,7 +33,7 @@ if 'usuario' not in st.session_state: st.session_state.update({'usuario': None, 
 def login():
     # --- CONFIGURACIÓN DE IMAGEN DE FONDO GLOBAL ---
     # Reemplaza la URL entre comillas simples con tu link de imagen o GIF
-    url_fondo = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNGs0NTNpMWVhdGs5YTA5cnA0YWt5NWVvNWc3Zzg0b2kybmxqYXBjMyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/U3qYN8S0j3bpK/giphy.gif' 
+    url_fondo = 'https://pixabay.com/gifs/loading-icon-progress-waiting-24054/' 
     
     st.markdown(f"""
         <style>
