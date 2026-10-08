@@ -203,7 +203,6 @@ def vista_solicitante():
 def vista_admin():
     st.title("⚙️ Panel de Administrador de Sistemas")
     
-    # Se agregó "Dashboard Analítico" como nueva pestaña en el menú
     menu = st.sidebar.radio("Navegación", [
         "Dashboard Analítico", 
         "Bandeja de Solicitudes", 
@@ -211,7 +210,31 @@ def vista_admin():
         "Base de Datos de Inspecciones"
     ])
     
-    # --- MEJORA: Dashboard Analítico ---
+    if menu == "Dashboard Analítico":
+        st.subheader("📊 Métricas de Soporte")
+        df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
+        
+        if not df_sol.empty:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total de Solicitudes", len(df_sol))
+            c2.metric("🔴 Pendientes", len(df_sol[df_sol['estado'] == 'Pendiente']))
+            c3.metric("🟢 Atendidas", len(df_sol[df_sol['estado'] == 'Atendida']))
+            
+            st.markdown("---")
+            col_chart1, col_chart2 = st.columns(2)
+            
+            with col_chart1:
+                st.write("**Solicitudes por Sección (Edificios)**")
+                conteo_seccion = df_sol['seccion'].value_counts()
+                st.bar_chart(conteo_seccion)
+                
+            with col_chart2:
+                st.write("**Nivel de Urgencia de los Reportes**")
+                conteo_urgencia = df_sol['impacto'].value_counts()
+                st.bar_chart(conteo_urgencia)
+        else:
+            st.info("No hay datos suficientes para mostrar métricas.")
+
     elif menu == "Bandeja de Solicitudes":
         st.subheader("Bandeja de Solicitudes (Docentes)")
         df_sol = pd.read_sql_query("SELECT * FROM solicitudes", conn)
@@ -271,7 +294,7 @@ def vista_admin():
             )
         else:
             st.info("No hay solicitudes registradas en la base de datos.")
-            
+
     elif menu == "Realizar Inspección Técnica":
         st.subheader("Formulario de Inspección Física")
         opciones_estado = ["Funciona Correctamente", "Presenta fallas o requiere reparación", "Requiere cambio de equipo", "Faltante"]
@@ -318,7 +341,6 @@ def vista_admin():
                 else:
                     st.error("El salón es obligatorio.")
 
-    # --- MEJORA: Filtro por rango de fechas en Inspecciones ---
     elif menu == "Base de Datos de Inspecciones":
         st.subheader("Historial Técnico y Exportación")
         df_insp = pd.read_sql_query("SELECT * FROM inspecciones", conn)
@@ -336,7 +358,7 @@ def vista_admin():
             # Validamos que el usuario haya seleccionado inicio y fin
             if len(rango_fechas) == 2:
                 df_filtrado = df_insp[(df_insp['fecha_dt'] >= rango_fechas[0]) & (df_insp['fecha_dt'] <= rango_fechas[1])]
-                df_mostrar = df_filtrado.drop(columns=['fecha_dt']) # Ocultamos la columna temporal que creamos
+                df_mostrar = df_filtrado.drop(columns=['fecha_dt']) # Ocultamos la columna temporal
             else:
                 df_mostrar = df_insp.drop(columns=['fecha_dt'])
 
