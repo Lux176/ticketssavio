@@ -33,7 +33,7 @@ if 'usuario' not in st.session_state: st.session_state.update({'usuario': None, 
 def login():
     # --- CONFIGURACIÓN DE IMAGEN DE FONDO GLOBAL ---
     # Reemplaza la URL entre comillas simples con tu link de imagen o GIF
-    url_fondo = 'https://pixabay.com/gifs/loading-icon-progress-waiting-24054/' 
+    url_fondo = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeGJkZTZ4OTBwaWRkam85azNudGRmb3h2MzJjenBnd2Z1YW9paGtpcCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ec5iuhc2aM9o3uK64q/giphy.gif' 
     
     st.markdown(f"""
         <style>
@@ -53,7 +53,7 @@ def login():
 
     # --- CONFIGURACIÓN DEL LOGO/GIF EN EL INICIO DE SESIÓN ---
     # Reemplaza este link por tu GIF de Giphy (Usa el "GIF Link" directo que termina en .gif)
-    url_gif = 'ticketssav.py'
+    url_gif = 'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cWlwN2wyang2MXcyMTBsMXlwb3U1cmswOHF6Z2xoYTFzNmZpdXN4dyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/9vJCmAR3mfKdJCeNHM/giphy.gif'
     
     st.markdown("<h1 style='text-align: center; color: #1f2937;'>🏫 Sistema de Soporte</h1>", unsafe_allow_html=True)
     
